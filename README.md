@@ -47,3 +47,5 @@ Every platform is different so these instructions are only in general terms.
 ## Known limitations
 - I did not design this to work recursively, so only files in the provided source directory are considered.
 - It requires you to manually initialize with a starting file in the destination directory.
+- The intent of this tool is to do incremental updates, copying over new files as they become available. The tool has no special handling for massive all-at-once syncs that could exceed the phone's storage capacity.
+    - If you are just starting out, I would manually handle backing up your backlog and then use this script for the incremental backups going forward.

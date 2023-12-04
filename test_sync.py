@@ -69,7 +69,6 @@ class ClientTestModule(unittest.TestCase):
         self.assertEqual(self.client.size_of_existing_files, 55)
 
         for i in range(1, 11):
-            # self.assertTrue(str(i) not in self.client.existing_filenames)
             self.assertEqual(self.client.existing_files_pq.get(), (i, str(i), i))
             self.assertTrue(str(i) in self.client.existing_filenames)
 

@@ -8,8 +8,6 @@ from paramiko import RSAKey
 from scp import SCPClient
 from queue import PriorityQueue
 
-ls_regex = re.compile(r'.{10}\s+\d\s+\w+\s+\w+\s+(\d+)\s+(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2})\s+(.+)')
-
 # This is the official delimiter character, ASCII code 30... Too bad the industry settled on commas.
 # Hopefully this will have less chance of conflicting with filenames.
 record_separator = '\u001E'
@@ -124,7 +122,6 @@ class Client:
         while not self.source_files_pq.empty():
             _, filename, size_bytes = self.source_files_pq.get()
             self._copy_over_file(source_path, filename, size_bytes)
-
 
 
 def create_client(ip, key_path, destination_path, limit, port=22, username='root'):
