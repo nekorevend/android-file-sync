@@ -9,8 +9,6 @@ Rsync is designed to keep two directories in sync. But once Google Photos has ba
 
 I made this tool to bridge that gap. It will only copy *new* files to the phone and ignore that old files are missing from the phone.
 
-Read more about my approach [here](coming_soon).
-
 ## How to Install
 
 ### On your computer
@@ -43,7 +41,7 @@ Every platform is different so these instructions are only in general terms.
     - Phone IP is `192.168.0.111`.
     - SSH port is `2222` (default with SimpleSSHD).
     - Your SSH key is at `~/.ssh/id_rsa`.
-1. An example command is: `python sync.py --source /media/cameras/galaxy/ --destination galaxy --phone_ip 192.168.0.111 --phone_port_num 2222 --rsa ~/.ssh/id_rsa_photos`
+1. An example command is: `python sync.py --source /media/cameras/galaxy/ --destination galaxy --phone_ip 192.168.0.111 --phone_port_num 2222 --rsa ~/.ssh/id_rsa`
     - This will copy any newer files from `/media/cameras/galaxy` on your computer to `/sdcard/sync/galaxy` on your Pixel phone.
 
 ## Known limitations
