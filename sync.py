@@ -5,6 +5,7 @@ import sys
 import time
 import paramiko
 import hashlib
+from collections import OrderedDict
 from paramiko import RSAKey
 from scp import SCPClient
 
@@ -32,11 +33,10 @@ class Client:
         self.destination_path = destination_path
         self.storage_limit_bytes = limit_gb * (1024**3)
 
-        self.oldest_date_at_dest = (
-            time.time()
-        )  # initialize to now, but will be overwritten.
-        self.existing_files = []
-        self.existing_filenames = set()
+        # initialize to now, but will be overwritten.
+        self.oldest_date_at_dest = time.time()
+
+        self.existing_file_metadata = OrderedDict()
         self.size_of_existing_files = 0
         self.source_files = []
         self.size_of_new_files = 0
@@ -73,7 +73,7 @@ class Client:
                     filename = entry.name
                     if (
                         modified_date < self.oldest_date_at_dest
-                        or filename in self.existing_filenames
+                        or filename in self.existing_file_metadata
                     ):
                         continue
                     self.source_files.append((modified_date, filename, size_bytes))
@@ -88,28 +88,29 @@ class Client:
         done
         """
         output = self._ssh_command(command)
-        lines = output.split(
-            "\n"
-        )  # splitlines() considers ASCII 30 to be equivalent to newline. (╯°□°)╯︵ ┻━┻
+        # splitlines() considers ASCII 30 to be equivalent to newline. (╯°□°)╯︵ ┻━┻
+        lines = output.split("\n")
         for line in lines:
             items = line.split(record_separator)
             if len(items) < 4:
                 continue
-            md5 = items[3]
-            size_bytes = int(items[2])
-            modified_date = int(items[1])
             filename = items[0]
+            modified_date = int(items[1])
+            size_bytes = int(items[2])
+            md5 = items[3]
             # print(f"{modified_date} : {filename} : {size_bytes} : {md5}")
             self.oldest_date_at_dest = min(self.oldest_date_at_dest, modified_date)
-            self.existing_files.append((modified_date, filename, size_bytes, md5))
-            self.existing_filenames.add(filename)
+            self.existing_file_metadata[filename] = (modified_date, size_bytes, md5)
             self.size_of_existing_files += size_bytes
 
-        self.existing_files.sort()
+        self.existing_file_metadata = OrderedDict(
+            sorted(self.existing_file_metadata.items(), key=lambda val: val[1][0])
+        )
 
     def _check_integrity(self, source_dir, new_files=None):
-        for _, filename, _, md5 in self.existing_files:
+        for filename, metadata in self.existing_file_metadata.items():
             path = os.path.join(source_dir, filename)
+            md5 = metadata[2].lower()
 
             # Skip if the file does not exist.
             if not os.path.exists(path):
@@ -118,18 +119,17 @@ class Client:
             # Open the file in binary mode for md5 calculation
             with open(path, "rb") as f:
                 source_content = f.read()
-                if hashlib.md5(source_content).hexdigest().lower() != md5.lower():
+                if hashlib.md5(source_content).hexdigest().lower() != md5:
                     self.bad_files.append(filename)
 
     def _create_ready_file(self):
-        self._ssh_command(f"touch /sdcard/sync/{self.destination_path}/ready_to_scan")
+        self._ssh_command(f"touch /sdcard/sync/ready_to_scan")
 
-    def _delete_existing_file(self, name, size=None):
+    def _delete_existing_file(self, name):
         self._ssh_command(f"rm /sdcard/sync/{self.destination_path}/{name}")
-        if size:
-            self.size_of_existing_files -= size
-            self.existing_filenames.remove(name)
-            self.existing_files.pop(0)
+        size = self.existing_file_metadata[name][1]
+        self.size_of_existing_files -= size
+        self.existing_file_metadata.pop(name)
 
     def _make_space(self, amount_bytes):
         if amount_bytes == 0:
@@ -137,9 +137,11 @@ class Client:
 
         print("Freeing up", amount_bytes, "bytes of space on the phone...")
 
-        for _, name, size, _ in self.existing_files.copy():
+        current_filenames = list(self.existing_file_metadata.keys())
+        for name in current_filenames:
+            size = self.existing_file_metadata[name][1]
             print("Deleting from phone:", name)
-            self._delete_existing_file(name, size)
+            self._delete_existing_file(name)
             amount_bytes -= size
             if amount_bytes <= 0:
                 return
@@ -185,7 +187,7 @@ class Client:
             self._copy_over_file(source_path, filename, size_bytes)
 
         # Scan all existing files on phone
-        print("There are new files copied over. Recheck the integrity of the files.")
+        print("There are new files copied over. Checking the integrity of the files.")
         self._scan_destination_files()
 
         # Check their integrity with the source files
@@ -200,7 +202,8 @@ class Client:
 
             # Check integrity again
             self.bad_files = []
-            print("Check the integrity of the files again.")
+            print("Checking the integrity of the files again.")
+            self._scan_destination_files()
             self._check_integrity(source_path)
 
         # Write ready file
