@@ -209,6 +209,8 @@ class Client:
         # Write ready file
         self._create_ready_file()
 
+        print("Done!")
+
 
 def create_client(
     ip, key_path, source_path, destination_path, limit, port=22, username="root"
@@ -270,8 +272,8 @@ if __name__ == "__main__":
         "--storage_limit_gb",
         "--limit",
         type=int,
-        default=30,
-        help="Limit in GiBs. Deletes the oldest files from the destination to stay under this limit. Defaults to 30GiB.",
+        default=10,
+        help="Limit in GiBs. Deletes the oldest files from the destination to stay under this limit. Defaults to 10GiB.",
     )
     args = parser.parse_args()
 
