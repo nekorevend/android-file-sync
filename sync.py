@@ -107,7 +107,7 @@ class Client:
             sorted(self.existing_file_metadata.items(), key=lambda val: val[1][0])
         )
 
-    def _check_integrity(self, source_dir, new_files=None):
+    def _check_integrity(self, source_dir):
         for filename, metadata in self.existing_file_metadata.items():
             path = os.path.join(source_dir, filename)
             md5 = metadata[2].lower()
@@ -171,24 +171,25 @@ class Client:
         self._scan_source_files()
         print("Found", len(self.source_files), "new files.")
 
-        if not self.source_files:
-            # There are no new files to copy over.
-            return
+        if self.source_files:
+            # There are new files to copy over
 
-        # Delete some old files
-        available_space = self.storage_limit_bytes - self.size_of_existing_files
-        if available_space < self.size_of_new_files:
-            print("Making some space.")
-            self._make_space(self.size_of_new_files - available_space)
+            # Delete some old files
+            available_space = self.storage_limit_bytes - self.size_of_existing_files
+            if available_space < self.size_of_new_files:
+                print("Making some space.")
+                self._make_space(self.size_of_new_files - available_space)
 
-        # Copy over new files
-        print("Copying over new files.")
-        for _, filename, size_bytes in self.source_files:
-            self._copy_over_file(source_path, filename, size_bytes)
+            # Copy over new files
+            print("Copying over new files.")
+            for _, filename, size_bytes in self.source_files:
+                self._copy_over_file(source_path, filename, size_bytes)
 
-        # Scan all existing files on phone
-        print("There are new files copied over. Checking the integrity of the files.")
-        self._scan_destination_files()
+            # Scan all existing files on phone
+            print(
+                "There are new files copied over. Checking the integrity of the files."
+            )
+            self._scan_destination_files()
 
         # Check their integrity with the source files
         self._check_integrity(source_path)
@@ -198,7 +199,7 @@ class Client:
             # Replace the bad files
             for filename in self.bad_files:
                 self._delete_existing_file(filename)
-                self.copy_over_files(source_path, filename)
+                self._copy_over_file(source_path, filename)
 
             # Check integrity again
             self.bad_files = []
