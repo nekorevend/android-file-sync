@@ -6,12 +6,42 @@ import time
 import paramiko
 import hashlib
 from collections import OrderedDict
+from functools import wraps
 from paramiko import RSAKey
 from scp import SCPClient
 
 # This is the official delimiter character, ASCII code 30... Too bad the industry settled on commas.
 # Hopefully this will have less chance of conflicting with filenames.
 record_separator = "\u001E"
+
+
+def retry(max_attempts=3, retry_exceptions=(Exception,)):
+    """
+    A decorator for retrying a function call if an exception occurs that is in a specified list.
+
+    Args:
+    - max_attempts: The maximum number of attempts to make.
+    - retry_exceptions: A tuple of the exceptions that should trigger a retry.
+    """
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            attempts = 0
+            while attempts < max_attempts:
+                try:
+                    return func(*args, **kwargs)
+                except retry_exceptions as e:
+                    attempts += 1
+                    print(
+                        f"Attempt {attempts}/{max_attempts} failed with error: {e}. Retrying..."
+                    )
+                    if attempts == max_attempts:
+                        raise
+
+        return wrapper
+
+    return decorator
 
 
 class Client:
@@ -52,6 +82,7 @@ class Client:
         if self.ssh:
             self.ssh.close()
 
+    @retry(3, (TimeoutError, paramiko.ssh_exception.SSHException))
     def _ssh_command(self, command):
         _, stdout, stderr = self.ssh.exec_command(command)
         output = stdout.read().decode()
@@ -61,6 +92,7 @@ class Client:
             print(error, file=sys.stderr)
         return output
 
+    @retry(3, (TimeoutError, paramiko.ssh_exception.SSHException))
     def _scp_command(self, source_path, dest_path):
         self.scp.put(source_path, dest_path, preserve_times=True)
 
