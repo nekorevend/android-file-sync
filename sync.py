@@ -217,11 +217,12 @@ class Client:
             for _, filename, size_bytes in self.source_files:
                 self._copy_over_file(source_path, filename, size_bytes)
 
-            # Scan all existing files on phone
-            print(
-                "There are new files copied over. Checking the integrity of the files."
-            )
+            # Scan files on phone to check the integrity of the files.
+            print("New files are copied over, rescanning the files.")
             self._scan_destination_files()
+
+        print("Checking the integrity of the files.")
+        self.bad_files = []
 
         # Check their integrity with the source files
         self._check_integrity(source_path)
