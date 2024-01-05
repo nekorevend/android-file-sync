@@ -7,8 +7,8 @@ import paramiko
 import hashlib
 from collections import OrderedDict
 from functools import wraps
-from paramiko import RSAKey
-from scp import SCPClient
+from paramiko import RSAKey, ssh_exception
+from scp import SCPClient, SCPException
 
 # This is the official delimiter character, ASCII code 30... Too bad the industry settled on commas.
 # Hopefully this will have less chance of conflicting with filenames.
@@ -82,7 +82,7 @@ class Client:
         if self.ssh:
             self.ssh.close()
 
-    @retry(3, (TimeoutError, paramiko.ssh_exception.SSHException))
+    @retry(5, (TimeoutError, ssh_exception.SSHException))
     def _ssh_command(self, command):
         _, stdout, stderr = self.ssh.exec_command(command)
         output = stdout.read().decode()
@@ -92,7 +92,7 @@ class Client:
             print(error, file=sys.stderr)
         return output
 
-    @retry(3, (TimeoutError, paramiko.ssh_exception.SSHException))
+    @retry(5, (TimeoutError, ssh_exception.SSHException, SCPException))
     def _scp_command(self, source_path, dest_path):
         self.scp.put(source_path, dest_path, preserve_times=True)
 
